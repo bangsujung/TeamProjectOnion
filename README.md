@@ -1,2 +1,2 @@
-# Team-Project-Onion-
+# TeamProjectOnion
 Team project - Second-hand trading platform 'Onion Market' with item listing, search, and chat features.
