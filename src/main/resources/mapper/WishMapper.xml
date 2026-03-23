@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.brexa.used.mapper.WishMapper">
+
+	<!-- 채번 -->
+    <select id="wishMaxno" resultType="java.lang.Integer">
+       SELECT IFNULL(MAX(SUBSTRING(WNO,10,3)),0)+1 AS 'MAXNO'
+       FROM WISH
+       WHERE SUBSTRING(WNO,2,8) = DATE_FORMAT(NOW(), '%Y%m%d')
+    </select>
+
+    <!-- 찜 등록 -->
+    <insert id="wishWrite" parameterType="WishVO">
+       INSERT INTO WISH (WNO, MNO, INO)
+       VALUES (#{wno}, #{mno}, #{ino})
+    </insert>
+
+	<delete id="wishDelete" parameterType="java.lang.String">
+    	DELETE FROM WISH WHERE WNO = #{wno}
+	</delete>
+	
+	<!-- 찜 목록 선택 -->
+	<delete id="wishSelect" parameterType="java.util.List">
+    	DELETE FROM WISH 
+    	WHERE WNO IN 
+    	<foreach collection="list" item="item" open="(" separator="," close=")">
+       		#{item}
+    	</foreach>
+	</delete>
+
+	<delete id="wishCancel" parameterType="WishVO">
+  	 	DELETE FROM WISH WHERE INO = #{ino} AND MNO = #{mno}
+	</delete>
+	
+	<select id="wishCheck" parameterType="WishVO" resultType="int">
+    	SELECT COUNT(*) FROM WISH 
+    	WHERE INO = #{ino} AND MNO = #{mno}
+	</select>
+	
+	<!-- 찜 목록 -->
+    <select id="wishList" resultType="ItemVO">
+        SELECT   W.WNO, I.INO, I.ITITLE, I.IPHOTO
+        FROM   	 WISH W
+        JOIN   	 ITEM I
+        ON   	 W.INO = I.INO
+        WHERE    W.MNO = #{keyword} <!-- keyword -> 로그인한 회원 번호 -->
+        ORDER 	 BY W.WNO DESC
+        LIMIT    #{offset}, #{pageSize}
+    </select>
+
+</mapper>

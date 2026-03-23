@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace='com.brexa.used.mapper.ChatMapper'>
+
+   <!-- 채팅방 채번 -->
+   <select id="roomMaxno" resultType="java.lang.Integer">
+      SELECT IFNULL(MAX(SUBSTRING(ROOM_NO, 10, 3)), 0) + 1 AS 'MAXNO'
+      FROM CHAT_ROOM
+      WHERE SUBSTRING(ROOM_NO, 2, 8) = DATE_FORMAT(NOW(), '%Y%m%d')
+   </select>
+
+   <!-- 채팅 채번 -->
+   <select id="msgMaxno" resultType="java.lang.Integer">
+      SELECT IFNULL(MAX(SUBSTRING(CNO, 10, 3)), 0) + 1 AS 'MAXNO'
+      FROM CHAT_MSG
+      WHERE SUBSTRING(CNO, 2, 8) = DATE_FORMAT(NOW(), '%Y%m%d')
+   </select>
+
+   <!-- 방 목록 -->
+   <select id="selectChatRoomList" parameterType="java.lang.String" resultType="ChatRoomVO">
+       SELECT 
+           R.ROOM_NO AS roomNo, 
+           R.INO AS ino, 
+           R.BUYER_MNO AS buyerMno, 
+           R.SELLER_MNO AS sellerMno, 
+           R.CRDATE AS crdate,
+           I.ITITLE AS ititle, 
+           -- ★ 추가: IPHOTO 문자열에서 첫 번째 쉼표 전까지만 잘라오기
+        IFNULL(SUBSTRING_INDEX(I.IPHOTO, ',', 1), '') AS iphoto,
+           (SELECT MID FROM MEMBER WHERE MNO = 
+               CASE WHEN R.BUYER_MNO = #{mno} THEN R.SELLER_MNO ELSE R.BUYER_MNO END
+           ) AS opponentNickname,
+           (SELECT CONTENT FROM CHAT_MSG 
+            WHERE ROOM_NO = R.ROOM_NO 
+            ORDER BY CDATE DESC LIMIT 1) AS lastContent,
+           (SELECT CDATE FROM CHAT_MSG 
+            WHERE ROOM_NO = R.ROOM_NO 
+            ORDER BY CDATE DESC LIMIT 1) AS lastCdate,
+           (SELECT COUNT(*) 
+            FROM CHAT_MSG M 
+            WHERE M.ROOM_NO = R.ROOM_NO 
+              AND M.READYN = 'N' 
+              AND M.SENDER_MNO != #{mno}) AS unreadCount
+       FROM CHAT_ROOM R
+       JOIN ITEM I ON R.INO = I.INO
+       WHERE (R.BUYER_MNO = #{mno} OR R.SELLER_MNO = #{mno})
+         -- ★ 추가: 메시지가 최소 1개 이상 존재하는 방만 노출 (방만 만들고 나간 경우 제외)
+         AND EXISTS (SELECT 1 FROM CHAT_MSG M WHERE M.ROOM_NO = R.ROOM_NO)
+       
+       ORDER BY 
+           -- 1. 안 읽은 메시지가 있는 방을 최우선
+           (CASE WHEN (SELECT COUNT(*) FROM CHAT_MSG M 
+                       WHERE M.ROOM_NO = R.ROOM_NO AND M.READYN = 'N' AND M.SENDER_MNO != #{mno}) > 0 
+                 THEN 1 ELSE 0 END) DESC,
+           -- 2. 마지막 메시지 시간 순 (메시지가 없으면 NULL이므로 IFNULL 처리)
+           IFNULL((SELECT MAX(CDATE) FROM CHAT_MSG WHERE ROOM_NO = R.ROOM_NO), R.CRDATE) DESC
+   </select>
+   
+   <!-- 방 중복 체크 -->
+   <select id="checkChatRoom" parameterType="ChatRoomVO" resultType="ChatRoomVO">
+      SELECT 
+         ROOM_NO AS roomNo, 
+         INO AS ino, 
+         BUYER_MNO AS buyerMno, 
+         SELLER_MNO AS sellerMno 
+      FROM CHAT_ROOM 
+      WHERE INO = #{ino} AND BUYER_MNO = #{buyerMno} AND SELLER_MNO = #{sellerMno}
+   </select>
+
+   <!-- 방 생성 -->
+   <insert id="insertChatRoom" parameterType="ChatRoomVO">
+      INSERT INTO CHAT_ROOM (ROOM_NO, INO, BUYER_MNO, SELLER_MNO, CRDATE)
+      VALUES (#{roomNo}, #{ino}, #{buyerMno}, #{sellerMno}, NOW())
+   </insert>
+
+
+   <!-- 메세지 저장 -->
+   <insert id="insertChatMsg" parameterType="ChatMsgVO">
+      INSERT INTO CHAT_MSG (CNO, ROOM_NO, SENDER_MNO, CONTENT, CDATE, READYN)
+      VALUES (#{cno}, #{roomNo}, #{senderMno}, #{content}, NOW(), 'N')
+   </insert>
+
+   <!-- 대화 내역 불러오기 -->
+   <!-- 채팅방 상대 프로필을 아이디 첫글자로 -->
+   <select id="selectChatMsgList" parameterType="java.lang.String" resultType="ChatMsgVO">
+      SELECT 
+          M.CNO        AS cno, 
+          M.ROOM_NO    AS roomNo, 
+          M.SENDER_MNO AS senderMno,
+          MB.MID       AS senderMid,
+          M.CONTENT    AS content, 
+          M.CDATE      AS cdate, 
+          M.READYN     AS readyn
+      FROM CHAT_MSG M
+      JOIN MEMBER MB ON M.SENDER_MNO = MB.MNO
+      WHERE M.ROOM_NO = #{roomNo}
+      ORDER BY M.CDATE ASC
+   </select>
+   
+   <!-- 발신자 MID 조회 -->
+   <!-- 채팅방 상대 프로필을 아이디 첫글자로 -->
+   <select id="selectMidByMno" parameterType="java.lang.String" resultType="java.lang.String">
+       SELECT MID FROM MEMBER WHERE MNO = #{mno}
+   </select>
+
+   <!-- 읽음 처리 -->
+   <update id="updateReadYN" parameterType="java.lang.String">
+      UPDATE CHAT_MSG 
+      SET READYN = 'Y' 
+      WHERE ROOM_NO = #{roomNo} AND READYN = 'N'
+   </update>
+
+   <!-- 안읽은 메시지 개수 -->
+   <select id="countUnreadMsg" parameterType="java.lang.String" resultType="java.lang.Integer">
+      SELECT COUNT(*) 
+      FROM CHAT_MSG 
+      WHERE ROOM_NO = #{roomNo} AND READYN = 'N'
+   </select>
+   
+   <!-- 읽음처리 -->
+   <update id="updateReadCheck" parameterType="map">
+       UPDATE CHAT_MSG 
+       SET READYN = 'Y' 
+       WHERE ROOM_NO = #{roomNo} 
+       AND SENDER_MNO != #{mno} 
+       AND READYN = 'N'
+   </update>
+   
+</mapper>

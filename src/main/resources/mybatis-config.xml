@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE configuration
+	PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-config.dtd">
+
+<configuration>
+    <typeAliases>
+        <typeAlias type="com.brexa.used.member.vo.MemberVO" alias="MemberVO"/>
+        <typeAlias type="com.brexa.used.comm.SearchCondition" alias="SearchCondition"/>
+        <typeAlias type="com.brexa.used.item.vo.ItemVO" alias="ItemVO"/>
+        <typeAlias type="com.brexa.used.wish.vo.WishVO" alias="WishVO"/>
+        <typeAlias type="com.brexa.used.report.vo.ReportVO" alias="ReportVO"/>
+        <typeAlias type="com.brexa.used.chat.vo.ChatRoomVO" alias="ChatRoomVO"/>
+        <typeAlias type="com.brexa.used.chat.vo.ChatMsgVO" alias="ChatMsgVO"/>
+    </typeAliases>
+</configuration>

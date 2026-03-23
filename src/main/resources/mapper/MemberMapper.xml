@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.brexa.used.mapper.MemberMapper">
+
+    <select id="maxno" resultType="int">
+        SELECT IFNULL(MAX(CAST(SUBSTR(MNO, -3) AS UNSIGNED)), 0) 
+        FROM MEMBER 
+        WHERE SUBSTR(MNO, 2, 8) = DATE_FORMAT(NOW(), '%Y%m%d')
+    </select>
+
+    <insert id="memberJoin" parameterType="MemberVO">
+        INSERT INTO MEMBER (MNO, MNAME, MID, MPW, MBIRTH, MPHONE, MMAIL, MINSERTDATE, MUPDATEDATE, MDELETEYN)
+        VALUES (#{mno}, #{mname}, #{mid}, #{mpw}, #{mbirth}, #{mphone}, #{mmail}, NOW(), NOW(), 'Y')
+    </insert>
+    
+    <select id="login" parameterType="java.lang.String" resultType="MemberVO">
+        SELECT	* 
+        FROM	MEMBER 
+        WHERE	MID = #{mid}
+        AND		MDELETEYN = 'Y'
+    </select>
+    
+    <select id="idCheck" parameterType="java.lang.String" resultType="int">
+        SELECT  COUNT(MID) 
+        FROM    MEMBER 
+        WHERE   MID = #{mid}
+    </select>
+
+    <select id="selectID" parameterType="java.lang.String" resultType="MemberVO">
+        SELECT  * 
+        FROM    MEMBER 
+        WHERE   MID = #{mid}
+        AND     MDELETEYN != 'N'
+    </select>
+
+    <update id="memberDelete" parameterType="java.lang.String">
+        UPDATE	MEMBER 
+        SET 
+       			MDELETEYN = 'N', 
+       			MUPDATEDATE = NOW() 
+        WHERE 	MNO = #{mno}
+    </update>
+    
+    <update id="memberUpdate" parameterType="MemberVO">
+    	UPDATE	MEMBER
+    	SET
+    			MNAME = #{mname},
+    			MBIRTH = #{mbirth},
+    			MPHONE = #{mphone},
+    			MMAIL = #{mmail},
+    			MUPDATEDATE = NOW()
+    	WHERE
+    			MNO = #{mno}
+    </update>
+    
+    <select id="memberList" parameterType="SearchCondition" resultType="MemberVO">
+    	SELECT	MNO,
+    			MNAME,
+    			MID,
+    			MBIRTH,
+    			MPHONE,
+    			MINSERTDATE
+    	FROM	MEMBER
+    	WHERE	MDELETEYN != 'N'
+    	<include refid="searchCondition"/>
+    	ORDER BY MINSERTDATE ASC, MNAME DESC
+		LIMIT	#{offset},#{pageSize}
+    </select>
+    
+    <select id="memberCnt" parameterType="SearchCondition" resultType="int">
+    	SELECT	
+    			COUNT(*)
+    	FROM	MEMBER
+    	WHERE	MDELETEYN != 'N'
+    	<include refid="searchCondition"/>
+    </select>
+    
+    <sql id="searchCondition">
+		<choose>
+			<when test='option == "NA"'>
+				AND MNAME LIKE CONCAT('%',#{keyword},'%')
+			</when>
+			<when test='option == "ID"'>
+				AND MID LIKE CONCAT('%',#{keyword},'%')
+			</when>
+		</choose>
+	</sql>
+    
+    <select id="memberOne" parameterType="java.lang.String" resultType="MemberVO">
+      SELECT	*
+      FROM   	MEMBER
+      WHERE
+            	MNO = #{mno}
+   </select>
+   
+   <select id="searchID" parameterType="MemberVO" resultType="java.lang.String">
+      SELECT
+      			MID
+      FROM   	MEMBER
+      WHERE   	MDELETEYN = 'Y'
+      AND     	MNAME = #{mname}
+      AND      	MPHONE = #{mphone}
+   </select>
+   
+   <select id="searchPW" parameterType="MemberVO" resultType="java.lang.String">
+	  SELECT	
+		  		MID
+	  FROM		MEMBER
+	  WHERE		MDELETEYN = 'Y'
+	  AND		MNAME = #{mname}
+	  AND		MID = #{mid}
+	  AND		MPHONE = #{mphone}
+   </select>
+   
+   <update id="pwUpdate" parameterType="MemberVO">
+   	  UPDATE	MEMBER
+   	  SET
+   	  			MPW = #{mpw},
+   	  			MUPDATEDATE = NOW()
+   	  WHERE
+   	  			MID = #{mid}
+   </update>
+   
+   <update id="updateRcnt">
+      UPDATE MEMBER 
+      SET RCNT = RCNT + 1 
+      WHERE MNO = #{mno}
+   </update>
+   
+   <!-- 계정정지 -->
+   <update id="repoBan" parameterType="ReportVO">
+      UPDATE MEMBER SET MDELETEYN = 'S' WHERE MNO = #{mno}
+   </update>
+
+</mapper>

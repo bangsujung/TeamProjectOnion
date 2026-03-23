@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.brexa.used.mapper.ReportMapper">
+
+	<insert id="repoWrite" parameterType="ReportVO">
+		INSERT INTO REPORT (MNO, RNO, RCNT)
+	    VALUES (#{mno}, #{rno}, 1)
+	    ON DUPLICATE KEY UPDATE
+	        RCNT = RCNT + 1
+	</insert>
+	
+	<update id="updateRcnt" parameterType="java.lang.String">
+		UPDATE MEMBER
+	    SET    RCNT = IFNULL(RCNT, 0) + 1
+	    WHERE  MNO = #{mno}
+	</update>
+	
+	<update id="repoBan" parameterType="java.lang.String">
+		UPDATE MEMBER
+		SET    MDELETEYN = 'N'  WHERE  MNO = #{mno} AND RCNT >= 5
+	</update>
+
+	<select id="repoMaxno" resultType="int">
+    	SELECT IFNULL(MAX(CAST(SUBSTR(RNO, 10) AS UNSIGNED)), 0) + 1 
+    	FROM REPORT
+	</select>
+	
+	<!-- 신고 목록 -->
+   <select id="repoList" parameterType="SearchCondition" resultType="reportVO">
+      SELECT
+         M.MID AS mid,
+         R.MNO,
+         R.RNO,
+         R.RCNT
+      FROM REPORT R
+      JOIN MEMBER M
+      ON R.MNO = M.MNO
+      WHERE 1=1
+      <if test="keyword != null and keyword != ''">
+         AND M.MID LIKE CONCAT('%',#{KEYWORD},'%')
+      </if>
+      ORDER BY R.RCNT DESC
+      LIMIT #{offset}, #{pageSize}
+   </select>
+
+   <!-- 신고개수 -->
+   <select id="repoCnt" parameterType="SearchCondition" resultType="java.lang.Integer">
+      SELECT COUNT(*)
+      FROM REPORT R
+      JOIN  MEMBER M
+      ON R.MNO = M.MNO
+      WHERE 1=1
+      <if test="keyword != null and keyword != ''">
+         AND M.MID LIKE CONCAT('%',#{keyword}, '%')
+      </if>
+   </select>
+   
+   <!-- 총 신고당한 횟수 -->
+   <select id="repoCount" parameterType="java.lang.String" resultType="java.lang.Integer">
+      <!-- DISTINCT : 악의적인 신고를 막기 위해 한 사람이 신고한 건 1회로 계산 -->
+      SELECT RCNT FROM REPORT WHERE MNO = #{mno}
+   </select>
+	
+</mapper>

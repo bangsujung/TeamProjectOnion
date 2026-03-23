@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace='com.brexa.used.mapper.ItemMapper'>
+   
+   <!-- 채번 -->
+   <select id="itemMaxno" resultType="int">
+      SELECT IFNULL(MAX(CAST(SUBSTRING(INO, 10) AS UNSIGNED)),0)+1 
+      FROM ITEM
+      WHERE INO LIKE CONCAT('I', DATE_FORMAT(NOW(), '%Y%m%d'),'%')
+   </select>
+
+   <!--등록 -->
+   <insert id="itemWrite" parameterType="ItemVO">
+      INSERT INTO ITEM
+      (INO, IID, IPW, ITITLE, ICATEGORY, ICONTENT, ICNT, IDEAL, IPHOTO, IORPHOTO, IINSERTDATE, IUPDATEDATE, IDELETEYN ) 
+         VALUES (#{ino}, #{iid}, #{ipw}, #{ititle}, #{icategory}, #{icontent}, '0', 0, #{iphoto}, #{iorphoto}, NOW(), NOW(), 'Y')
+   </insert>
+   
+   <!-- 수정 -->
+   <update id="itemUpdate" parameterType="ItemVO">
+      UPDATE ITEM SET
+         ITITLE = #{ititle},
+         ICATEGORY = #{icategory},
+         ICONTENT = #{icontent},
+         IDEAL = #{ideal},
+         IUPDATEDATE = NOW()
+         <if test="iphoto != null and iphoto != ''">
+            ,IPHOTO = #{iphoto}
+            ,IORPHOTO = #{iorphoto}
+         </if>
+      WHERE INO = #{ino}
+   </update>
+   
+   <!-- 리스트 -->
+   <select id="itemList" parameterType="SearchCondition" resultType="ItemVO">
+      SELECT 
+         INO, ITITLE, IID, ICNT, IDEAL, IINSERTDATE, IPHOTO
+         FROM ITEM
+         WHERE IDELETEYN = 'Y'
+         <include refid="searchCondition"/>
+         ORDER BY INO DESC, IINSERTDATE DESC
+         LIMIT #{offset}, #{pageSize}
+   </select>
+   
+   <!-- 상세조회 -->
+    <select id="itemOne" parameterType="java.lang.String" resultType="ItemVO">
+       <![CDATA[
+       SELECT 
+           I.*, 
+           (SELECT M.MNO FROM MEMBER M WHERE M.MID = I.IID) AS MNO
+       FROM ITEM I
+       WHERE I.INO = #{ino}
+          OR I.INO = (SELECT INO FROM ITEM WHERE IDELETEYN = 'Y' AND INO > #{ino} ORDER BY INO ASC LIMIT 1)
+          OR I.INO = (SELECT INO FROM ITEM WHERE IDELETEYN = 'Y' AND INO < #{ino} ORDER BY INO DESC LIMIT 1)
+       ORDER BY I.INO DESC
+       ]]>
+   </select>
+   
+   <!-- 조회수 증가 -->
+   <update id="itemCnt" parameterType="java.lang.String">
+      UPDATE ITEM SET ICNT = ICNT + 1 WHERE INO = #{ino}
+   </update>
+   
+   <!-- 총 회원수 -->
+   <select id="itemCount" parameterType="SearchCondition" resultType="java.lang.Integer">
+      SELECT COUNT(*) FROM ITEM WHERE IDELETEYN = 'Y'
+      <include refid="searchCondition"/>
+   </select>
+   
+      <!-- 비번확인 -->
+   <select id="pkChk" parameterType="java.lang.String" resultType="java.lang.String">
+      SELECT   IPW
+      FROM   ITEM
+      WHERE   INO = #{ino}
+   </select>
+   
+   <!-- 상품 삭제 -->
+   <update id="itemDelete" parameterType="java.lang.String">
+      UPDATE ITEM
+      SET
+         IDELETEYN = 'N',
+         IUPDATEDATE = NOW()
+      WHERE
+         INO = #{ino}
+   </update>
+   
+   <!-- 옵션에 따라 쿼리문 -->
+   <sql id="searchCondition">
+      <choose>
+         <when test='option == "CA"'>
+               AND ICATEGORY = #{keyword}
+           </when>
+         <when test='option == "ID"'>
+            AND IID LIKE CONCAT('%',#{keyword},'%')
+         </when>
+         <when test='option == "TI"'>
+            AND ITITLE LIKE CONCAT('%',#{keyword},'%')
+         </when>
+         <when test='option == "TC"'>
+            AND (ITITLE LIKE CONCAT('%',#{keyword},'%')
+            OR ICONTENT LIKE CONCAT('%',#{keyword},'%'))
+         </when>
+      </choose>
+   </sql>
+
+</mapper>
